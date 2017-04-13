@@ -181,12 +181,14 @@ mod fixtures {
                 }
             ]
         }
-
-        fn overlaps(&self, other: &QuadTreeRegion) -> bool {
-            other.contains(&Vec2 { x: self.x, y: self.y })
-                || other.contains(&Vec2 { x: self.x + self.width, y: self.y })
-                || other.contains(&Vec2 { x: self.x, y: self.y + self.height })
-                || other.contains(&Vec2 { x: self.x + self.width, y: self.y + self.height })
+    fn overlaps(&self, other: &QuadTreeRegion) -> bool {
+        let underlaps = |own:&QuadTreeRegion,other: &QuadTreeRegion|{
+            other.contains(&Vec2 { x: own.x, y: own.y })
+                || other.contains(&Vec2 { x: own.x + own.width, y: own.y })
+                || other.contains(&Vec2 { x: own.x, y: own.y + own.height })
+                || other.contains(&Vec2 { x: own.x + own.width, y: own.y + own.height })
+            };
+        return underlaps(self,other) || underlaps(other,self);
         }
     }
 
@@ -198,6 +200,9 @@ mod fixtures {
     #[test]
     fn test_overlaps() {
         assert!(QuadTreeRegion::square(0.0, 0.0, 100.0).overlaps(&QuadTreeRegion::square(50.0, 50.0, 100.0)));
+    }
+    fn test_overlaps2() {
+        assert!(QuadTreeRegion::square(0.0,0.0,100.0).overlaps(&QuadTreeRegion::square(50.0,50.0,49.0)));
     }
 
     #[test]
