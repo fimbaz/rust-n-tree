@@ -199,6 +199,11 @@ mod fixtures {
     fn test_overlaps() {
         assert!(QuadTreeRegion::square(0.0, 0.0, 100.0).overlaps(&QuadTreeRegion::square(50.0, 50.0, 100.0)));
     }
+    #[test]
+    // test impl fails when other is totally contained by self.
+    fn test_overlaps2() {
+        assert!(QuadTreeRegion::square(0.0,0.0,100.0).overlaps(&QuadTreeRegion::square(50.0,50.0,49.0)));
+    }
 
     #[test]
     fn test_split() {
