@@ -187,9 +187,9 @@ fn split_and_insert<P, R: Region<P>>(bucket: &mut NTree<R, P>, point: P) {
 
 
 pub struct RangeQuery<'t, R: 't, P: 't> {
-    query: R,
-    points: slice::Iter<'t, P>,
-    stack: Vec<slice::Iter<'t, NTree<R, P>>>
+    pub query: R,
+    pub points: slice::Iter<'t, P>,
+    pub stack: Vec<slice::Iter<'t, NTree<R, P>>>
 }
 
 
