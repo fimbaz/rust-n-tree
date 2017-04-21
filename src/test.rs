@@ -182,11 +182,15 @@ mod fixtures {
             ]
         }
 
+        
         fn overlaps(&self, other: &QuadTreeRegion) -> bool {
-            other.contains(&Vec2 { x: self.x, y: self.y })
-                || other.contains(&Vec2 { x: self.x + self.width, y: self.y })
-                || other.contains(&Vec2 { x: self.x, y: self.y + self.height })
-                || other.contains(&Vec2 { x: self.x + self.width, y: self.y + self.height })
+            let underlaps = |own:&QuadTreeRegion,other: &QuadTreeRegion|{
+                other.contains(&Vec2 { x: own.x, y: own.y })
+                    || other.contains(&Vec2 { x: own.x + own.width, y: own.y })
+                    || other.contains(&Vec2 { x: own.x, y: own.y + own.height })
+                    || other.contains(&Vec2 { x: own.x + own.width, y: own.y + own.height })
+            };
+            return underlaps(self,other) || underlaps(other,self);
         }
     }
 
