@@ -11,7 +11,7 @@ use self::test::Bencher;
 use self::rand::{random, XorShiftRng, Rng};
 
 use self::fixtures::{QuadTreeRegion, Vec2};
-use {NTree, Region};
+use {NTree};
 
 #[test]
 fn test_contains() {
@@ -74,7 +74,7 @@ fn test_range_query() {
     ntree.insert(Vec2 { x: 60.0, y: 59.0 });
     ntree.insert(Vec2 { x: 60.0, y: 45.0 });
 
-    assert_eq!(ntree.range_query(&QuadTreeRegion { x: 0.0, y: 0.0, width: 100.0, height: 40.0 })
+    assert_eq!(ntree.range_query(QuadTreeRegion { x: 0.0, y: 0.0, width: 100.0, height: 40.0 })
                    .map(|x| x.clone()).collect::<Vec<Vec2>>(),
                vec![Vec2 { x: 30.0, y: 30.0 },
                     Vec2 { x: 20.0, y: 20.0 },
@@ -99,7 +99,7 @@ fn range_query_bench(b: &mut Bencher, n: usize) {
             height: rng.gen()
         };
 
-        for p in ntree.range_query(&r) { test::black_box(p); }
+        for p in ntree.range_query(r) { test::black_box(p); }
     })
 }
 

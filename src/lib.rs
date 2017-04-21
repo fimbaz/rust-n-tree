@@ -1,11 +1,10 @@
-#![deny(missing_docs)]
+//#![deny(missing_docs)]
 #![cfg_attr(test, deny(warnings))]
 #![cfg_attr(feature = "bench", feature(test))]
 
 //! A generic, n-dimensional quadtree for fast neighbor lookups on multiple axes.
 
 extern crate ref_slice;
-
 use std::{mem, slice};
 use self::NTreeVariant::{Branch, Bucket};
 
@@ -18,7 +17,7 @@ mod test;
 /// other regions, and tell if a point is contained within the region.
 pub trait Region<P>: Clone {
     /// Does this region contain this point?
-    fn contains(&self, &P) -> bool;
+    fn contains(&self, & P) -> bool;
 
     /// Split this region, returning a Vec of sub-regions.
     ///
@@ -28,7 +27,7 @@ pub trait Region<P>: Clone {
     fn split(&self) -> Vec<Self>;
 
     /// Does this region overlap with this other region?
-    fn overlaps(&self, other: &Self) -> bool;
+    fn overlaps(& self, other: &Self) -> bool;
 }
 
 /// A quadtree-like structure, but for arbitrary arity.
@@ -38,11 +37,11 @@ pub trait Region<P>: Clone {
 /// of attributes and quickly query for data that falls within a
 /// specific range.
 pub struct NTree<R, P> {
-    region: R,
-    kind: NTreeVariant<R, P>
+    pub region: R,
+    pub kind: NTreeVariant<R, P>
 }
 
-enum NTreeVariant<R, P> {
+pub enum NTreeVariant<R, P> {
     /// A leaf of the tree, which contains points.
     Bucket {
         points: Vec<P>,
@@ -75,11 +74,10 @@ impl<P, R: Region<P>> NTree<R, P> {
             region: region
         }
     }
-
     /// Insert a point into the n-tree, returns true if the point
     /// is within the n-tree and was inserted and false if not.
-    pub fn insert(&mut self, point: P) -> bool {
-        if !self.region.contains(&point) { return false }
+    pub fn insert(&mut self,  point: P) -> bool {
+        if !self.region.contains(& point) { return false }
 
         match self.kind {
             Bucket { ref mut points, ref bucket_limit } => {
@@ -100,29 +98,36 @@ impl<P, R: Region<P>> NTree<R, P> {
         split_and_insert(self, point);
         true
     }
-
-    /// Get all the points which within the queried region.
-    ///
-    /// Finds all points which are located in regions overlapping
-    /// the passed in region, then filters out all points which
-    /// are not strictly within the region.
-    pub fn range_query<'t, 'q>(&'t self, query: &'q R) -> RangeQuery<'t, 'q, R, P> {
+    pub fn range_query<'t>(&'t self, query: R) -> RangeQuery<'t, R, P> {
         RangeQuery {
             query: query,
             points: (&[]).iter(),
             stack: vec![ref_slice::ref_slice(self).iter()],
         }
     }
+    /// Get all the points which within the queried region.
+    ///
+    /// Finds all points which are located in regions overlapping
+    /// the passed in region, then filters out all points which
+    /// are not strictly within the region.
+    pub fn range_query_mut<'t>(&'t mut self, query: R) -> RangeQueryMut<'t, R, P> {
+        RangeQueryMut {
+            stack: vec![ref_slice::mut_ref_slice(self).iter_mut()], //1 len slice w/ head of tree
 
+            query: query,
+            points: (&mut []).iter_mut(), //empty slice
+
+        }
+    }
     /// Is the point contained in the n-tree?
-    pub fn contains(&self, point: &P) -> bool {
+    pub fn contains(&self, point: & P) -> bool {
         self.region.contains(point)
     }
 
     /// Get all the points nearby a specified point.
     ///
     /// This will return no more than bucket_limit points.
-    pub fn nearby<'a>(&'a self, point: &P) -> Option<&'a[P]> {
+    pub fn nearby<'a>(&'a self, point: & P) -> Option<&'a[P]> {
         if self.region.contains(point) {
             match self.kind {
                 Bucket { ref points, .. } => Some(points.as_slice()),
@@ -137,6 +142,22 @@ impl<P, R: Region<P>> NTree<R, P> {
             None
         }
     }
+    pub fn nearby_mut<'a>(&'a mut self, point: &mut P) -> Option<&'a mut[P]> {
+        if self.region.contains(point) {
+            match self.kind {
+                Bucket { ref mut points, .. } => Some(&mut points[..]),
+                Branch { ref mut subregions } => {
+                    subregions
+                        .iter_mut()
+                        .find(|r| r.contains(point))
+                        .and_then(|r| r.nearby_mut(point))
+                }
+            }
+        } else {
+            None
+        }
+    }
+
 }
 
 fn split_and_insert<P, R: Region<P>>(bucket: &mut NTree<R, P>, point: P) {
@@ -164,19 +185,15 @@ fn split_and_insert<P, R: Region<P>>(bucket: &mut NTree<R, P>, point: P) {
     bucket.insert(point);
 }
 
-/// An iterator over the points within a region.
 
-// This iterates over the leaves of the tree from left-to-right by
-// maintaining (a) the sequence of points at the current level
-// (possibly empty), and (b) stack of iterators over the remaining
-// children of the parents of the current point.
-pub struct RangeQuery<'t,'q, R: 'q + 't, P: 't> {
-    query: &'q R,
+pub struct RangeQuery<'t, R: 't, P: 't> {
+    query: R,
     points: slice::Iter<'t, P>,
     stack: Vec<slice::Iter<'t, NTree<R, P>>>
 }
 
-impl<'t, 'q, R: Region<P>, P> Iterator for RangeQuery<'t, 'q, R, P> {
+
+impl<'t, R: Region<P>, P> Iterator for RangeQuery<'t, R, P> {
     type Item = &'t P;
 
     fn next(&mut self) -> Option<&'t P> {
@@ -207,7 +224,7 @@ impl<'t, 'q, R: Region<P>, P> Iterator for RangeQuery<'t, 'q, R, P> {
                         None => continue 'region_search,
 
                         Some(value) => {
-                            if value.region.overlaps(self.query) {
+                            if value.region.overlaps(&self.query) {
                                 // we always need to save this state, either we
                                 // recur into a new region, or we break out and
                                 // handle the points; either way, this is the
@@ -232,3 +249,56 @@ impl<'t, 'q, R: Region<P>, P> Iterator for RangeQuery<'t, 'q, R, P> {
         }
     }
 }
+/// An iterator over the points within a region.
+
+// This iterates over the leaves of the tree from left-to-right by
+// maintaining (a) the sequence of points at the current level
+// (possibly empty), and (b) stack of iterators over the remaining
+// children of the parents of the current point.
+pub struct RangeQueryMut<'t, R: 't, P: 't> {
+    query: R,
+    points: slice::IterMut<'t, P>,
+    stack: Vec<slice::IterMut<'t, NTree<R, P>>>,
+       
+}
+
+impl<'t, R: Region<P>, P> Iterator for RangeQueryMut<'t, R, P> {
+    type Item = &'t mut P;
+
+    fn next(&mut self) -> Option<&'t mut P> {
+        'outer: loop {
+            for p in &mut self.points {
+                if self.query.contains(p) {
+                    return Some(p)
+                }
+            }
+            'region_search: loop {
+                let mut children_iter = match self.stack.pop() {
+                    Some(x) => x,
+                    None => return None,
+                };
+                'children: loop {
+                    match children_iter.next() {
+                        None => continue 'region_search,
+                        Some(value) => {
+                            if value.region.overlaps(&self.query) {
+                                self.stack.push(children_iter);
+                                match value.kind {
+                                    Bucket { ref mut points, .. } => {
+                                        self.points = points.iter_mut();
+                                        continue 'outer;
+                                    }
+                                    Branch { ref  mut subregions } => children_iter = subregions.iter_mut()
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        }
+    }
+}
+
+
+
+
